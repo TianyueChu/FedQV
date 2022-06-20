@@ -42,11 +42,16 @@ class DatasetSplit(Dataset):
                     # flip 71 to 73 for CIFAR
                      if label == 71:   
                         label = label + 2  
-            elif self.attack_type =='backdoor':
+            elif self.attack_type == 'backdoor':
                 image = PatternSynthesizer().synthesize_inputs(image=image)
                 label = PatternSynthesizer().synthesize_labels(label=label)
-            elif self.attack_type == 'gaussian_noise':
-                label = label
+            elif self.attack_type == 'single_pixel':
+                image = PatternSynthesizer(pattern_tensor= torch.tensor([[1.]]), backdoor_label = 6).synthesize_inputs(image=image)
+                label = PatternSynthesizer(pattern_tensor= torch.tensor([[1.]]), backdoor_label = 6).synthesize_labels(label=label)
+            elif self.attack_type == 'physical':
+                image = PhysicalSynthesizer().synthesize_inputs(image=image)
+                label = PhysicalSynthesizer().synthesize_labels(label=label)
+                
         return image, label
 
 
@@ -118,8 +123,7 @@ class PatternSynthesizer:
     
     def __init__(self):
         super().__init__()
-        # self.make_pattern(self.pattern_tensor, self.x_top, self.y_top)
-
+       
     def make_pattern(self, pattern_tensor, x_top, y_top, image):
         full_image = torch.zeros(image.shape)
         full_image.fill_(self.mask_value)
@@ -167,3 +171,89 @@ class PatternSynthesizer:
       self.make_pattern(pattern, x, y, image)
       
       return self.pattern, self.mask
+      
+     
+class PhysicalSynthesizer:
+    """
+    For physical backdoors it's ok to train using pixel pattern that
+    represents the physical object in the real scene.
+    """
+    
+    pattern_tensor = torch.tensor([[1.]])
+    
+    x_top = 3
+    "X coordinate to put the backdoor into."
+    y_top = 23
+    "Y coordinate to put the backdoor into."
+
+    mask_value = -10
+    "A tensor coordinate with this value won't be applied to the image."
+
+    resize_scale = (5, 10)
+    "If the pattern is dynamically placed, resize the pattern."
+
+    mask: torch.Tensor = None
+    "A mask used to combine backdoor pattern with the original image."
+
+    pattern: torch.Tensor = None
+    "A tensor of the `input.shape` filled with `mask_value` except backdoor."
+    
+    attack_portion = 0.5
+
+    "Attack portion of backdoor." 
+    
+    backdoor_label = 7
+
+    "backdoor attack label" 
+    
+    def __init__(self):
+        super().__init__()
+       
+    def make_pattern(self, pattern_tensor, x_top, y_top, image):
+        full_image = torch.zeros(image.shape)
+        full_image.fill_(self.mask_value)
+
+        x_bot = x_top + pattern_tensor.shape[0]
+        y_bot = y_top + pattern_tensor.shape[1]
+
+        if x_bot >= image.shape[1] or \
+                y_bot >= image.shape[2]:
+            raise ValueError(f'Position of backdoor outside image limits:'
+                             f'image: {image.shape}, but backdoor'
+                             f'ends at ({x_bot}, {y_bot})')
+
+        full_image[:, x_top:x_bot, y_top:y_bot] = pattern_tensor
+        # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
+        normalize = transforms.Normalize((0.5,), (0.5,))
+        "Generic normalization for input data."
+        
+        self.mask = 1 * (full_image != self.mask_value).to('cpu')
+        self.pattern = normalize(full_image).to('cpu')
+
+    def synthesize_inputs(self, image):
+        pattern, mask = self.get_pattern(image)
+        image = (1 - mask) * image + mask * pattern
+
+        return image
+
+    def synthesize_labels(self,label):
+        label = self.backdoor_label
+
+        return label
+
+    def get_pattern(self,image):
+      resize = random.randint(self.resize_scale[0], self.resize_scale[1])
+      pattern = self.pattern_tensor
+      if random.random() > 0.5:
+          pattern = functional.hflip(pattern)
+      figure = transform_to_image(pattern)
+      pattern = transform_to_tensor(
+          functional.resize(figure,
+              resize, interpolation=0)).squeeze()
+
+      x = random.randint(0, image.shape[1] - pattern.shape[0] - 1)
+      y = random.randint(0, image.shape[2] - pattern.shape[1] - 1)
+      self.make_pattern(pattern, x, y, image)
+      
+      return self.pattern, self.mask
+      
