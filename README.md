@@ -1,57 +1,88 @@
-# Federated Learning [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4321561.svg)](https://doi.org/10.5281/zenodo.4321561)
+# FedQV: Leveraging Quadratic Voting in Federated Learning
 
-This is partly the reproduction of the paper of [Communication-Efficient Learning of Deep Networks from Decentralized Data](https://arxiv.org/abs/1602.05629)   
-Only experiments on MNIST and CIFAR10 (both IID and non-IID) is produced by far.
+Implementation of the paper submitted to AAAI 2023.
 
-Note: The scripts will be slow without the implementation of parallel computing. 
 
 ## Requirements
-python>=3.6  
-pytorch>=0.4
+This code requires the following:
+- Python 3.6 or greater
+- PyTorch 1.6 or greater
+- Torchvision
+- Numpy 1.18.5
 
-## Run
+## Data Preparation
 
-The MLP and CNN models are produced by:
-> python [main_nn.py](main_nn.py)
+-   Download train and test datasets manually from the given links, or they will use the default links in torchvision.
+-   Experiments are run on MNIST, Fashion-MNIST and CIFAR10. [http://yann.lecun.com/exdb/mnist/](http://yann.lecun.com/exdb/mnist/) [https://github.com/zalandoresearch/fashion-mnist](https://github.com/zalandoresearch/fashion-mnist) [http://www.cs.toronto.edu/∼kriz/cifar.html](http://www.cs.toronto.edu/%E2%88%BCkriz/cifar.html)
 
-Federated learning with MLP and CNN is produced by:
-> python [main_fed.py](main_fed.py)
+## Running the experiments
 
-See the arguments in [options.py](utils/options.py). 
+The baseline experiment trains the model in the conventional way.
 
-For example:
-> python main_fed.py --dataset mnist --iid --num_channels 1 --model cnn --epochs 50 --gpu 0  
+-   To train FedQV on CIFAR10  with N=100 under no attacker setting:
 
-`--all_clients` for averaging over all client models
+```
+python main_fed.py --dataset cifar --num_channels 3 --model resnet18 --epochs 100 --gpu 0 --num_users 100 --agg fedqv
 
-NB: for CIFAR-10, `num_channels` must be 3.
+```
 
-## Results
-### MNIST
-Results are shown in Table 1 and Table 2, with the parameters C=0.1, B=10, E=5.
+-   To train the FedQV on MNIST with N=100 under Krum attack with 30% attackers:
 
-Table 1. results of 10 epochs training with the learning rate of 0.01
+```
+python main_fed.py --dataset mnist --num_channels 1 --model cnn --epochs 100 --gpu 0 --num_users 100 --agg fedqv --num_attackers 30 --attack_type krum
 
-| Model     | Acc. of IID | Acc. of Non-IID|
-| -----     | -----       | ----           |
-| FedAVG-MLP|  94.57%     | 70.44%         |
-| FedAVG-CNN|  96.59%     | 77.72%         |
+```
 
-Table 2. results of 50 epochs training with the learning rate of 0.01
+-   To train the FedQV with reputation model on Fashion-MNIST under Scaling attack with 50% attackers:
 
-| Model     | Acc. of IID | Acc. of Non-IID|
-| -----     | -----       | ----           |
-| FedAVG-MLP| 97.21%      | 93.03%         |
-| FedAVG-CNN| 98.60%      | 93.81%         |
+```
+python main_fed.py --dataset fmnist --num_channels 1 --model cnn --epochs 100 --gpu 0 --num_users 100 --agg fedqv --num_attackers 50 --attack_type scaling_attack --rep True
+
+```
+-   To train the FedQV with reputation model on MNIST under Backdoor attack with 30% attackers, 30 budget and 0.2 similarity threshold:
+
+```
+python main_fed.py --dataset mnist --num_channels 1 --model cnn --epochs 100 --gpu 0 --num_users 100 --agg fedqv --num_attackers 30 --attack_type backdoor --budget 30 --theta 0.2
+
+```
+
+-   To train Multi-Krum with FedQV on Fashion-MNIST under Gaussian attack with 30% attackers:
+
+```
+python main_fed.py --dataset fmnist --num_channels 1 --model cnn --epochs 100 --gpu 0 --num_users 100 --agg multi-krum --num_attackers 30 --attack_type gaussian_attack --qv True
+
+```
+You can change the default values of other parameters to simulate different conditions. Refer to [options.py](utils/options.py).
 
 
-## Ackonwledgements
-Acknowledgements give to [youkaichao](https://github.com/youkaichao).
+## Options
+
+The default values for various parameters parsed to the experiment are given in `options.py`. Details are given some of those parameters:
+
+-   `--dataset:` Default is 'mnist'. Options: 'mnist', 'fmnist', 'cifar'
+-   `--iid:` Defaul is False. 
+-   `--num_users:` Default is 100.
+-   `--seed:` Random Seed. Default is 1.
+-   `--model:` Local model. Default is 'cnn'. Options:  'cnn', 'resnet18'
+-   `--agg:`Aggregation methods. Default is 'fedavg'. Options: 'fedavg', 'fedqv', 'multi-krum'.
+-   `--epochs:` Rounds of training. Default is 100.
+-   `--frac:`The fraction of parties. Default is 0.1.
+
+#### FedQV Parameters
+-   `--budget:`Voting budget. Default is 30.
+-   `--theta:` Similarity threshold. Default is 0.2.
+-   `'--rep':` whether use reputation model. Default is False.
+-   `--qv:` whether use quadratic voting module. Default is False.
+
+#### Attack Parameters
+-   `--num_attackers:` Number of attackers. Default is 0.
+-   `--attack_type:` Default is 'lableflip'. Options:  'lableflip', 'backdoor','gaussian_attack','krum_attack','trim_attack','backdoor','scaling_attack'.
+
+
 
 ## References
 McMahan, Brendan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In Artificial Intelligence and Statistics (AISTATS), 2017.
-
-## Cite As
+Bagdasaryan, Eugene, and Vitaly Shmatikov. "Blind backdoors in deep learning models." 30th USENIX Security Symposium (USENIX Security 21). 2021.
 Shaoxiong Ji. (2018, March 30). A PyTorch Implementation of Federated Learning. Zenodo. http://doi.org/10.5281/zenodo.4321561
 
 
