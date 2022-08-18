@@ -19,6 +19,10 @@ def build_model(args):
         net_glob = ResNet18(args=args)
     elif args.model == 'resnet18' and args.dataset == 'cifar100':
         net_glob = ResNet18(args=args)
+    elif args.model == 'cnn' and args.dataset == 'fmnist':
+        net_glob = CNNMnist(args=args)
+    elif args.model == 'restnet18' and args.dataset == 'fmnist':
+        net_glob = ResNet18(args=args) 
     else:
         print(args.model)
         print(args.dataset)
