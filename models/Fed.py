@@ -203,7 +203,7 @@ def FedQV(w, w_global, vote_budget, n, reputation_on, theta, acc):
                 layer = np.append(layer, np.array(j.tolist()).flatten())
                 
             # grads[i] contains all the grads of client[i]        
-            grads[i] = layer
+            grads[i] = layer:
             sim_score = smp.cosine_similarity(grads[i].reshape(1,-1), glob_grad.reshape(1,-1)).flatten().tolist()[-1]
             weight.append(sim_score)
         
@@ -213,18 +213,22 @@ def FedQV(w, w_global, vote_budget, n, reputation_on, theta, acc):
         normalized_weight = scaler.fit_transform(np.array(weight).reshape(-1,1))
         # voice credit
         voice_credit = []
-        for i in range(len(normalized_weight)):
-            if normalized_weight[i][0] <= theta:
-                voice_credit.append(0)
-                if normalized_weight[i][0] == 0:
-                    vote_budget[i] = 0
-                else:
-                    vote_budget[i] = max(vote_budget[i] + (math.log(normalized_weight[i][0]) - 1), 0)
-            elif normalized_weight[i][0] >= 1 - theta:
-                voice_credit.append(0)
-                vote_budget[i] = max(vote_budget[i] + (math.log(normalized_weight[i][0]) - 1), 0)
-            else:
-                voice_credit.append(-math.log(normalized_weight[i][0]) + 1)
+        if acc > 0:
+            for i in range(len(normalized_weight)):
+               if normalized_weight[i][0] <= theta:
+                  voice_credit.append(0)
+               elif normalized_weight[i][0] >= 1-theta:
+                  voice_credit.append(0)
+               else:
+                  voice_credit.append(-math.log(normalized_weight[i][0])+1)
+        else:
+            for i in range(len(normalized_weight)):
+               if normalized_weight[i][0] >= theta:
+                  voice_credit.append(0)
+               elif normalized_weight[i][0] in [0]:
+                  voice_credit.append(1)
+               else:
+                  voice_credit.append(-math.log(normalized_weight[i][0])+1)
         
        # Reputation model
         if reputation_on:
@@ -242,9 +246,8 @@ def FedQV(w, w_global, vote_budget, n, reputation_on, theta, acc):
        
         for i in range(len(vote_budget)):
             # budget already run out
-            if vote_budget[i] <= 0:
+            if vote_budget[i] == 0:
                 voice_credit[i] = 0
-                vote_budget[i] = 0
             # vote budget run out this time
             elif vote_budget[i]- voice_credit[i] <= 0:
                 voice_credit[i] = vote_budget[i]
