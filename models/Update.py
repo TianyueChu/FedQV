@@ -30,27 +30,16 @@ class DatasetSplit(Dataset):
         image, label = self.dataset[self.idxs[item]]
         if self.attack_mode:
             if self.attack_type == 'lableflip':
-                if self.name_dataset == 'mnist':
-                    # flip 1 to 7 for MNIST
-                    if label == 1:   
-                        label = label + 6
-                elif self.name_dataset == 'cifar':
-                    # flip 3 to 5 for CIFAR
-                     if label == 3:   
-                        label = label + 2
+                if self.name_dataset == 'mnist'or 'fminst' or 'cifar':
+                     label = 10 - label - 1 
                 elif self.name_dataset == 'cifar100':
-                    # flip 71 to 73 for CIFAR
-                     if label == 71:   
-                        label = label + 2  
+                    label = 100 - label -1  
             elif self.attack_type == 'backdoor':
                 image = PatternSynthesizer().synthesize_inputs(image=image)
                 label = PatternSynthesizer().synthesize_labels(label=label)
-            elif self.attack_type == 'single_pixel':
-                image = PatternSynthesizer(pattern_tensor= torch.tensor([[1.]]), backdoor_label = 6).synthesize_inputs(image=image)
-                label = PatternSynthesizer(pattern_tensor= torch.tensor([[1.]]), backdoor_label = 6).synthesize_labels(label=label)
-            elif self.attack_type == 'physical':
-                image = PhysicalSynthesizer().synthesize_inputs(image=image)
-                label = PhysicalSynthesizer().synthesize_labels(label=label)
+            elif self.attack_type == 'scaling_attack':
+                image = ScaleSynthesizer().synthesize_inputs(image=image)
+                label = ScaleSynthesizer().synthesize_labels(label=label)
                 
         return image, label
 
@@ -61,7 +50,7 @@ class LocalUpdate(object):
         self.loss_func = nn.CrossEntropyLoss()
         self.selected_clients = []
         self.ldr_train = DataLoader(DatasetSplit(dataset, idxs, attack_mode, args.attack_type, args.dataset), batch_size=self.args.local_bs, shuffle=True, drop_last=True)
-        # self.poison_train = DatasetSplit(dataset, idxs, attack_mode)
+  
 
     def train(self, net):
         net.train()
@@ -138,7 +127,6 @@ class PatternSynthesizer:
                              f'ends at ({x_bot}, {y_bot})')
 
         full_image[:, x_top:x_bot, y_top:y_bot] = pattern_tensor
-        # normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],std=[0.229, 0.224, 0.225])
         normalize = transforms.Normalize((0.5,), (0.5,))
         "Generic normalization for input data."
         
@@ -173,13 +161,13 @@ class PatternSynthesizer:
       return self.pattern, self.mask
       
      
-class PhysicalSynthesizer:
+class ScaleSynthesizer:
     """
     For physical backdoors it's ok to train using pixel pattern that
     represents the physical object in the real scene.
     """
     
-    pattern_tensor = torch.tensor([[1.]])
+    pattern_tensor = torch.tensor([ [1.,]])
     
     x_top = 3
     "X coordinate to put the backdoor into."
