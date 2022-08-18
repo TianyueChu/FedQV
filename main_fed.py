@@ -171,7 +171,7 @@ if __name__ == '__main__':
                     w_locals[idx][k] = w_krum[k]
         
         
-        if args.attack_type == 'trim_attack':
+        if args.attack_type == 'trimmed-mean_attack':
             w_trim = trimmed_mean(w_locals,0.4)
             for k in w_trim.keys():
                 w_trim[k] = - w_trim[k]
