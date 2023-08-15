@@ -79,13 +79,14 @@ The default values for various parameters parsed to the experiment are given in 
 -   `--attack_type:` Default is 'lableflip'. Options:  'lableflip', 'backdoor','gaussian_attack','krum_attack','trim_attack','backdoor','scaling_attack'.
 
 
-#### Environment Initilazaion:
-````
+#### Environment Initialization:
+```
 conda activate FedQV_simulation
 pip3 install torch==1.12.1+cu113 torchvision==0.13.1+cu113 torchaudio==0.12.1 --extra-index-url https://download.pytorch.org/whl/cu113
 pip3 install matplotlib==3.3.4
 pip3 install scikit-learn
 ```
+
 
 ## References
 McMahan, Brendan, Eider Moore, Daniel Ramage, Seth Hampson, and Blaise Aguera y Arcas. Communication-Efficient Learning of Deep Networks from Decentralized Data. In Artificial Intelligence and Statistics (AISTATS), 2017.
